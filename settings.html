@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <div class="app-layout">
+    <div id="sidebar"></div>
+    <main class="main-content">
+      <div class="page-header"><h1>Settings</h1></div>
+      <div id="alertArea"></div>
+
+      <div class="card card-body mb-4">
+        <h3 class="mb-3">Account Settings</h3>
+        <form id="passwordForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Current Password</label>
+              <input type="password" id="currentPassword" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" id="newPassword" class="form-control" minlength="6" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="confirmPassword" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Change Password</button>
+        </form>
+        <hr style="margin:24px 0;border:none;border-top:1px solid var(--border)">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="email" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="tel" id="phone" class="form-control">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="updateContact">Update Contact Info</button>
+      </div>
+
+      <div class="card card-body mb-4">
+        <h3 class="mb-3">Profile Settings</h3>
+        <form id="profileForm">
+          <div class="form-group text-center">
+            <img src="" id="photoPreview" class="avatar avatar-lg" style="margin:0 auto 12px">
+            <input type="file" id="photo" accept="image/*" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="fullName" class="form-control">
+          </div>
+          <div class="form-group" id="bioGroup">
+            <label>Bio</label>
+            <textarea id="bio" class="form-control" maxlength="200"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" id="location" class="form-control">
+          </div>
+          <div id="freelancerFields"></div>
+          <button type="submit" class="btn btn-primary">Save Profile</button>
+        </form>
+      </div>
+
+      <div class="card card-body mb-4">
+        <h3 class="mb-3">Notification Preferences</h3>
+        <div id="notifPrefs"></div>
+      </div>
+
+      <div class="card card-body mb-4">
+        <h3 class="mb-3">Privacy Settings</h3>
+        <div id="privacyPrefs"></div>
+      </div>
+
+      <div class="card card-body">
+        <h3 class="mb-3 text-danger">Account Deactivation</h3>
+        <p class="text-muted mb-3">Deactivating your account will hide your profile and prevent login.</p>
+        <button class="btn btn-ghost" id="deactivateBtn" style="color:#DC2626;border-color:#DC2626">Deactivate Account</button>
+      </div>
+    </main>
+  </div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    const user = Auth.getCurrentUser();
+    mountLayout(document.getElementById('header'), null, { activePage: 'settings.html' });
+    document.getElementById('sidebar').innerHTML = renderSidebar(user.role, 'settings.html');
+
+    const settings = Store.getUserSettings(user.user_id);
+    document.getElementById('email').value = user.email;
+    document.getElementById('phone').value = user.phone_number;
+    document.getElementById('fullName').value = user.full_name;
+    document.getElementById('bio').value = user.bio || '';
+    document.getElementById('location').value = user.location || '';
+    document.getElementById('photoPreview').src = user.profile_photo_url;
+
+    if (user.role === 'freelancer') {
+      const fd = Store.getFreelancerDetails(user.user_id);
+      if (fd) {
+        document.getElementById('freelancerFields').innerHTML = `
+          <div class="form-group">
+            <label>Headline</label>
+            <input type="text" id="headline" class="form-control" value="${fd.headline || ''}">
+          </div>
+          <div class="form-group">
+            <label>Skills</label>
+            <select id="skills" class="form-control" multiple size="5">
+              ${SKILLS_LIST.map(s => `<option value="${s}" ${fd.skills?.includes(s) ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Hourly Rate (NPR)</label>
+              <input type="number" id="hourlyRate" class="form-control" value="${fd.hourly_rate || ''}">
+            </div>
+            <div class="form-group">
+              <label>Availability</label>
+              <select id="availability" class="form-control">
+                ${['Available','Busy','Not Available'].map(a => `<option value="${a}" ${fd.availability_status === a ? 'selected' : ''}>${a}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      document.getElementById('bioGroup').style.display = 'none';
+      const cd = Store.getClientDetails(user.user_id);
+      if (cd) {
+        document.getElementById('freelancerFields').innerHTML = `
+          <div class="form-group"><label>Company Name</label><input type="text" id="companyName" class="form-control" value="${cd.company_name || ''}"></div>
+          <div class="form-group"><label>Industry</label><select id="industry" class="form-control">${INDUSTRIES.map(i => `<option value="${i}" ${cd.industry === i ? 'selected' : ''}>${i}</option>`).join('')}</select></div>
+          <div class="form-group"><label>Company Description</label><textarea id="companyDesc" class="form-control">${cd.company_description || ''}</textarea></div>
+        `;
+      }
+    }
+
+    document.getElementById('notifPrefs').innerHTML = `
+      <div class="form-check"><input type="checkbox" id="emailNotif" ${settings.email_notifications ? 'checked' : ''}> Email notifications</div>
+      <div class="form-check"><input type="checkbox" id="inappNotif" ${settings.inapp_notifications ? 'checked' : ''}> In-app notifications</div>
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+      <div class="form-check"><input type="checkbox" id="notifyMessages" ${settings.notify_messages ? 'checked' : ''}> New messages</div>
+      <div class="form-check"><input type="checkbox" id="notifyJobs" ${settings.notify_jobs ? 'checked' : ''}> Job matches</div>
+      <div class="form-check"><input type="checkbox" id="notifyPayments" ${settings.notify_payments ? 'checked' : ''}> Payment confirmations</div>
+      <div class="form-check"><input type="checkbox" id="notifyReviews" ${settings.notify_reviews ? 'checked' : ''}> Reviews</div>
+      <button class="btn btn-primary btn-sm mt-3" id="saveNotif">Save Preferences</button>
+    `;
+
+    document.getElementById('privacyPrefs').innerHTML = `
+      <div class="form-group">
+        <label>Profile Visibility</label>
+        <select id="visibility" class="form-control">
+          <option value="public" ${settings.profile_visibility === 'public' ? 'selected' : ''}>Public</option>
+          <option value="private" ${settings.profile_visibility === 'private' ? 'selected' : ''}>Private</option>
+        </select>
+      </div>
+      ${user.role === 'freelancer' ? `<div class="form-check"><input type="checkbox" id="showEarnings" ${settings.show_earnings ? 'checked' : ''}> Show earnings on profile</div>` : ''}
+      <button class="btn btn-primary btn-sm mt-3" id="savePrivacy">Save Privacy</button>
+    `;
+
+    document.getElementById('photo').addEventListener('change', async (e) => {
+      if (e.target.files[0]) document.getElementById('photoPreview').src = await readFileAsDataURL(e.target.files[0]);
+    });
+
+    document.getElementById('passwordForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const current = document.getElementById('currentPassword').value;
+      const newP = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('confirmPassword').value;
+      if (user.password !== hashPassword(current)) { showAlert(document.getElementById('alertArea'), 'Current password is incorrect.', 'error'); return; }
+      if (newP !== confirm) { showAlert(document.getElementById('alertArea'), 'New passwords do not match.', 'error'); return; }
+      Store.updateUser(user.user_id, { password: hashPassword(newP) });
+      showAlert(document.getElementById('alertArea'), 'Password updated successfully.', 'success');
+      e.target.reset();
+    });
+
+    document.getElementById('updateContact').addEventListener('click', () => {
+      Store.updateUser(user.user_id, { email: document.getElementById('email').value, phone_number: document.getElementById('phone').value });
+      showAlert(document.getElementById('alertArea'), 'Contact info updated.', 'success');
+    });
+
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const updates = {
+        full_name: document.getElementById('fullName').value,
+        bio: document.getElementById('bio').value,
+        location: document.getElementById('location').value
+      };
+      const photoFile = document.getElementById('photo').files[0];
+      if (photoFile) updates.profile_photo_url = await readFileAsDataURL(photoFile);
+      Store.updateUser(user.user_id, updates);
+
+      if (user.role === 'freelancer') {
+        const skills = Array.from(document.getElementById('skills')?.selectedOptions || []).map(o => o.value);
+        Store.updateFreelancerDetails(user.user_id, {
+          headline: document.getElementById('headline')?.value,
+          skills,
+          hourly_rate: parseFloat(document.getElementById('hourlyRate')?.value),
+          availability_status: document.getElementById('availability')?.value
+        });
+      } else {
+        Store.updateClientDetails(user.user_id, {
+          company_name: document.getElementById('companyName')?.value,
+          industry: document.getElementById('industry')?.value,
+          company_description: document.getElementById('companyDesc')?.value
+        });
+      }
+      showAlert(document.getElementById('alertArea'), 'Profile updated successfully.', 'success');
+    });
+
+    document.getElementById('saveNotif').addEventListener('click', () => {
+      Store.updateUserSettings(user.user_id, {
+        email_notifications: document.getElementById('emailNotif').checked,
+        inapp_notifications: document.getElementById('inappNotif').checked,
+        notify_messages: document.getElementById('notifyMessages').checked,
+        notify_jobs: document.getElementById('notifyJobs').checked,
+        notify_payments: document.getElementById('notifyPayments').checked,
+        notify_reviews: document.getElementById('notifyReviews').checked
+      });
+      showAlert(document.getElementById('alertArea'), 'Notification preferences saved.', 'success');
+    });
+
+    document.getElementById('savePrivacy').addEventListener('click', () => {
+      const updates = { profile_visibility: document.getElementById('visibility').value };
+      const showEarn = document.getElementById('showEarnings');
+      if (showEarn) updates.show_earnings = showEarn.checked;
+      Store.updateUserSettings(user.user_id, updates);
+      showAlert(document.getElementById('alertArea'), 'Privacy settings saved.', 'success');
+    });
+
+    document.getElementById('deactivateBtn').addEventListener('click', () => {
+      if (confirm('Are you sure you want to deactivate your account?')) {
+        Store.updateUser(user.user_id, { is_active: false });
+        Auth.logout();
+      }
+    });
+  </script>
+</body>
+</html>

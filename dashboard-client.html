@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Dashboard — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <div class="app-layout">
+    <div id="sidebar"></div>
+    <main class="main-content">
+      <div class="page-header">
+        <h1 id="welcomeMsg">Welcome back!</h1>
+        <p>Manage your projects and find talent</p>
+      </div>
+      <div class="stat-cards" id="statCards"></div>
+      <div class="flex gap-2 mb-4" style="flex-wrap:wrap">
+        <a href="job-post.html" class="btn btn-primary">Post a Job</a>
+        <a href="browse-freelancers.html" class="btn btn-secondary">Browse Freelancers</a>
+        <a href="messages.html" class="btn btn-ghost">Messages</a>
+      </div>
+      <div class="grid-2">
+        <div class="card card-body">
+          <h3 class="mb-3">Recent Activity</h3>
+          <ul class="activity-list" id="activityList"></ul>
+        </div>
+        <div class="card card-body">
+          <h3 class="mb-3">Recommended Freelancers</h3>
+          <div id="recommended"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    const user = Auth.getCurrentUser();
+    if (!Auth.requireRole('client')) throw '';
+    mountLayout(document.getElementById('header'), null, { activePage: 'dashboard-client.html' });
+    document.getElementById('sidebar').innerHTML = renderSidebar('client', 'dashboard-client.html');
+
+    const details = Store.getClientDetails(user.user_id);
+    const jobs = Store.getJobs({ client_id: user.user_id });
+    const activeProjects = jobs.filter(j => j.status === 'in-progress' || j.status === 'posted').length;
+    const payments = Store.getPayments({ client_id: user.user_id });
+    const pendingPayments = payments.filter(p => p.status === 'escrow').reduce((s, p) => s + p.amount, 0);
+
+    document.getElementById('welcomeMsg').textContent = `Welcome back, ${details?.company_name || user.full_name}!`;
+
+    document.getElementById('statCards').innerHTML = `
+      <div class="stat-card"><div class="stat-label">Active Projects</div><div class="stat-value">${activeProjects}</div></div>
+      <div class="stat-card"><div class="stat-label">Pending Payments</div><div class="stat-value">${formatCurrency(pendingPayments)}</div><span class="text-muted" style="font-size:13px">In escrow</span></div>
+      <div class="stat-card"><div class="stat-label">Total Spent</div><div class="stat-value">${formatCurrency(details?.total_spent || 0)}</div></div>
+      <div class="stat-card"><div class="stat-label">Freelancers Hired</div><div class="stat-value">${details?.freelancers_hired || 0}</div></div>
+    `;
+
+    const activities = Store.getActivities(user.user_id);
+    document.getElementById('activityList').innerHTML = activities.length ? activities.slice(0, 5).map(a => `
+      <li class="activity-item">
+        <div class="activity-icon">📌</div>
+        <div><p>${a.message}</p><span class="activity-time">${timeAgo(a.created_at)}</span></div>
+      </li>
+    `).join('') : '<li class="empty-state" style="padding:20px">No recent activity</li>';
+
+    const freelancers = Store.getAllFreelancers().filter(f => f.details?.availability_status === 'Available').slice(0, 4);
+    document.getElementById('recommended').innerHTML = freelancers.map(f => `
+      <div class="flex gap-2 mb-3" style="align-items:center">
+        <img src="${f.profile_photo_url}" class="avatar" alt="">
+        <div style="flex:1">
+          <strong>${f.full_name}</strong><br>
+          <small>${f.details.headline}</small><br>
+          ${renderStars(f.details.average_rating)} ${formatCurrency(f.details.hourly_rate)}/hr
+        </div>
+        <a href="profile-freelancer.html?id=${f.user_id}" class="btn btn-sm btn-outline">View</a>
+      </div>
+    `).join('') || '<p class="text-muted">No recommendations yet</p>';
+  </script>
+</body>
+</html>

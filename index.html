@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreelanceFactory — Where every skill finds its perfect match</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+
+  <section class="hero">
+    <div class="container hero-content">
+      <p class="subheading">Connect. Create. Thrive.</p>
+      <h1>Where every skill finds its perfect match</h1>
+      <p class="tagline">A global marketplace connecting freelancers with clients, featuring secure escrow payments and transparent ratings.</p>
+      <div class="hero-cta">
+        <a href="signup.html?role=client" class="btn btn-primary btn-lg">I Need Work Done</a>
+        <a href="signup.html?role=freelancer" class="btn btn-secondary btn-lg">I Want to Work</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <h2>How It Works</h2>
+        <p>Get started in three simple steps</p>
+      </div>
+      <div class="steps">
+        <div class="step-card card">
+          <div class="step-icon">📝</div>
+          <h3>Post a Job</h3>
+          <p>Describe your project, set your budget, and publish to our global talent pool.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">👥</div>
+          <h3>Review Freelancers</h3>
+          <p>Browse profiles, compare ratings, and connect with the perfect match for your needs.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">🔒</div>
+          <h3>Pay Securely</h3>
+          <p>Funds held in escrow until you approve the work. Safe payments, guaranteed results.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header">
+        <h2>Featured Freelancers</h2>
+        <p>Top-rated professionals ready to help</p>
+      </div>
+      <div class="carousel">
+        <div class="carousel-track" id="freelancerCarousel"></div>
+      </div>
+      <div class="carousel-nav">
+        <button class="carousel-btn" id="freelancerPrev">‹</button>
+        <button class="carousel-btn" id="freelancerNext">›</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Featured Jobs</h2>
+        <p>Recent opportunities from clients worldwide</p>
+      </div>
+      <div class="carousel">
+        <div class="carousel-track" id="jobsCarousel"></div>
+      </div>
+      <div class="carousel-nav">
+        <button class="carousel-btn" id="jobsPrev">‹</button>
+        <button class="carousel-btn" id="jobsNext">›</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="trust-grid">
+        <div class="trust-item">
+          <div class="trust-icon">🔒</div>
+          <h3>Secure Escrow Payments</h3>
+          <p>Your money is protected until work is delivered and approved.</p>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">✅</div>
+          <h3>Verified Users</h3>
+          <p>Email-verified accounts with transparent ratings and reviews.</p>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">🌍</div>
+          <h3>100+ Active Freelancers</h3>
+          <p>A growing community of skilled professionals across industries.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>What Our Users Say</h2>
+      </div>
+      <div class="grid-3" id="testimonials"></div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header">
+        <h2>Frequently Asked Questions</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question">How does escrow payment work? <span class="icon">+</span></button>
+          <div class="faq-answer"><p>When you hire a freelancer, your payment is held securely in escrow. The freelancer only receives funds after you review and approve their submitted work.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">Is FreelanceFactory free to join? <span class="icon">+</span></button>
+          <div class="faq-answer"><p>Yes! Creating an account is completely free for both freelancers and clients. We only charge a small service fee on completed transactions.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">How do I get verified? <span class="icon">+</span></button>
+          <div class="faq-answer"><p>All users verify their email during registration via OTP. Complete your profile to build trust and attract more opportunities.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">What if there's a dispute? <span class="icon">+</span></button>
+          <div class="faq-answer"><p>Either party can raise a dispute within 7 days of job completion. Our admin team reviews evidence and resolves the issue within 48 hours.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">What payment methods are supported? <span class="icon">+</span></button>
+          <div class="faq-answer"><p>We support Khalti and eSewa for secure payments in Nepal, with funds held in escrow until work is approved.</p></div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">Can I work as both a freelancer and client? <span class="icon">+</span></button>
+          <div class="faq-answer"><p>During registration, you choose your primary role. Contact support if you need to switch roles on your account.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'), { activePage: 'index.html' });
+    initFAQ();
+
+    const freelancers = Store.getAllFreelancers()
+      .filter(f => f.details)
+      .sort((a, b) => b.details.average_rating - a.details.average_rating)
+      .slice(0, 6);
+
+    document.getElementById('freelancerCarousel').innerHTML = freelancers.map(f => `
+      <div class="carousel-item">
+        <div class="card freelancer-card">
+          <div class="card-body">
+            <div class="freelancer-card-header">
+              <img src="${f.profile_photo_url}" alt="${f.full_name}" class="avatar">
+              <div>
+                <h4>${f.full_name}</h4>
+                <p class="text-muted" style="font-size:13px">${f.details.headline}</p>
+              </div>
+            </div>
+            <div>${renderStars(f.details.average_rating)} <small>(${f.details.total_reviews})</small></div>
+            <p><strong>${formatCurrency(f.details.hourly_rate)}/hr</strong></p>
+            <a href="profile-freelancer.html?id=${f.user_id}" class="btn btn-outline btn-sm btn-block">View Profile</a>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    const jobs = Store.getJobs().filter(j => j.status === 'posted').slice(0, 6);
+    document.getElementById('jobsCarousel').innerHTML = jobs.map(j => {
+      const client = Store.getUser(j.client_id);
+      return `
+        <div class="carousel-item">
+          <div class="card job-card">
+            <div class="card-body">
+              <span class="tag">${j.category}</span>
+              <h4 class="mt-2">${j.title}</h4>
+              <p class="budget">${formatCurrency(j.budget)}</p>
+              <p class="text-muted" style="font-size:13px">by ${client?.full_name || 'Client'}</p>
+              <a href="job-details.html?id=${j.job_id}" class="btn btn-primary btn-sm btn-block mt-2">View Details</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    initCarousel('freelancerCarousel', 'freelancerPrev', 'freelancerNext');
+    initCarousel('jobsCarousel', 'jobsPrev', 'jobsNext');
+
+    const testimonials = [
+      { name: 'Anisha Karki', role: 'Startup Founder', quote: 'FreelanceFactory helped me find an amazing designer within hours. The escrow system gave me peace of mind.', img: 'Anisha+Karki' },
+      { name: 'Dipesh Maharjan', role: 'Freelancer', quote: 'I\'ve earned over NPR 200,000 in my first three months. The platform is intuitive and clients are great to work with.', img: 'Dipesh+Maharjan' },
+      { name: 'Maya Shrestha', role: 'Marketing Manager', quote: 'Transparent ratings and secure payments make hiring freelancers stress-free. Highly recommended!', img: 'Maya+Shrestha' }
+    ];
+
+    document.getElementById('testimonials').innerHTML = testimonials.map(t => `
+      <div class="card testimonial-card">
+        <p class="quote">"${t.quote}"</p>
+        <img src="https://ui-avatars.com/api/?name=${t.img}&background=10B981&color=fff&size=128" alt="${t.name}" class="testimonial-avatar">
+        <p class="testimonial-name">${t.name}</p>
+        <p class="testimonial-role">${t.role}</p>
+      </div>
+    `).join('');
+  </script>
+</body>
+</html>

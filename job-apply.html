@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apply for Job — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container container-md">
+      <h1 class="mb-4">Apply for Job</h1>
+      <div id="alertArea"></div>
+      <div class="card card-body mb-4" id="jobSummary"></div>
+      <form id="applyForm" class="card card-body">
+        <div class="form-group">
+          <label>Cover Letter (optional, max 500 characters)</label>
+          <textarea id="coverLetter" class="form-control" maxlength="500" rows="5" placeholder="Tell the client why you're a great fit..."></textarea>
+          <span class="hint"><span id="charCount">0</span>/500</span>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Application</button>
+      </form>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    if (!Auth.requireRole('freelancer')) throw '';
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const jobId = getQueryParam('id');
+    const job = Store.getJob(jobId);
+    if (!job) { window.location.href = 'browse-jobs.html'; throw ''; }
+
+    const user = Auth.getCurrentUser();
+    const existing = Store.getApplications({ job_id: jobId, freelancer_id: user.user_id });
+    if (existing.length) {
+      showAlert(document.getElementById('alertArea'), 'You have already applied for this job.', 'info');
+      document.getElementById('applyForm').style.display = 'none';
+    }
+
+    document.getElementById('jobSummary').innerHTML = `
+      <h3>${job.title}</h3>
+      <p class="text-muted">${truncate(job.description, 200)}</p>
+      <p><strong>${formatCurrency(job.budget)}</strong> · Due ${formatDate(job.deadline)}</p>
+    `;
+
+    document.getElementById('coverLetter').addEventListener('input', (e) => {
+      document.getElementById('charCount').textContent = e.target.value.length;
+    });
+
+    document.getElementById('applyForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      Store.addApplication({
+        application_id: generateId(),
+        job_id: jobId,
+        freelancer_id: user.user_id,
+        cover_letter: document.getElementById('coverLetter').value,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      });
+
+      const client = Store.getUser(job.client_id);
+      Store.addNotification({
+        notification_id: generateId(),
+        user_id: job.client_id,
+        message: `${user.full_name} applied for "${job.title}"`,
+        read: false,
+        created_at: new Date().toISOString()
+      });
+
+      Store.addActivity({
+        activity_id: generateId(),
+        user_id: user.user_id,
+        type: 'application',
+        message: `Applied for "${job.title}"`,
+        created_at: new Date().toISOString()
+      });
+
+      showAlert(document.getElementById('alertArea'), '✓ Application sent! Wait for the client to review.', 'success');
+      document.getElementById('applyForm').style.display = 'none';
+    });
+  </script>
+</body>
+</html>

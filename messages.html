@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:24px">
+    <div class="container">
+      <h1 class="mb-3">Messages</h1>
+      <div class="chat-layout">
+        <div class="conversation-list">
+          <div style="padding:16px;border-bottom:1px solid var(--border)">
+            <input type="text" id="searchConv" class="form-control" placeholder="Search conversations...">
+          </div>
+          <div id="convList"></div>
+        </div>
+        <div class="chat-window" id="chatWindow">
+          <div class="empty-state" style="flex:1;display:flex;align-items:center;justify-content:center">
+            <p>Select a conversation to start messaging</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    mountLayout(document.getElementById('header'), null, { activePage: 'messages.html' });
+
+    const user = Auth.getCurrentUser();
+    let activeConvId = null;
+
+    function getOtherParticipant(conv) {
+      return conv.participants.find(p => p !== user.user_id);
+    }
+
+    function renderConversations(filter = '') {
+      const convs = Store.getConversations(user.user_id)
+        .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+
+      document.getElementById('convList').innerHTML = convs.length ? convs.map(c => {
+        const otherId = getOtherParticipant(c);
+        const other = Store.getUser(otherId);
+        if (!other) return '';
+        if (filter && !other.full_name.toLowerCase().includes(filter.toLowerCase())) return '';
+        const unread = c.unread?.[user.user_id] || 0;
+        return `
+          <div class="conversation-item ${c.conversation_id === activeConvId ? 'active' : ''}" data-id="${c.conversation_id}" data-user="${otherId}">
+            <img src="${other.profile_photo_url}" class="avatar avatar-sm" alt="">
+            <div style="flex:1;min-width:0">
+              <div class="flex-between"><strong style="font-size:14px">${other.full_name}</strong><span class="time">${timeAgo(c.last_message_at)}</span></div>
+              <p class="preview">${c.last_message || 'No messages yet'}</p>
+            </div>
+            ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
+          </div>
+        `;
+      }).join('') : '<div class="empty-state" style="padding:32px"><p>No conversations yet</p></div>';
+
+      document.querySelectorAll('.conversation-item').forEach(el => {
+        el.addEventListener('click', () => openChat(el.dataset.id, el.dataset.user));
+      });
+    }
+
+    function openChat(convId, otherUserId) {
+      activeConvId = convId;
+      const other = Store.getUser(otherUserId);
+      Store.markConversationRead(convId, user.user_id);
+      renderConversations(document.getElementById('searchConv').value);
+
+      const messages = Store.getMessages(convId);
+      document.getElementById('chatWindow').innerHTML = `
+        <div class="chat-header">
+          <img src="${other.profile_photo_url}" class="avatar avatar-sm" alt="">
+          <div><strong>${other.full_name}</strong><br><small class="text-muted">Online</small></div>
+        </div>
+        <div class="chat-messages" id="messages">${messages.map(m => `
+          <div class="message ${m.sender_id === user.user_id ? 'sent' : 'received'}">
+            ${m.content}
+            <div class="msg-time">${formatDateTime(m.created_at)}</div>
+          </div>
+        `).join('')}</div>
+        <div class="chat-input">
+          <textarea id="msgInput" class="form-control" placeholder="Type a message..." rows="1"></textarea>
+          <input type="file" id="attachFile" style="display:none">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('attachFile').click()">📎</button>
+          <button class="btn btn-primary btn-sm" id="sendBtn">Send</button>
+        </div>
+      `;
+
+      const msgContainer = document.getElementById('messages');
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+
+      document.getElementById('sendBtn').addEventListener('click', sendMessage);
+      document.getElementById('msgInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+      });
+
+      function sendMessage() {
+        const content = document.getElementById('msgInput').value.trim();
+        if (!content) return;
+        const msg = {
+          message_id: generateId(),
+          conversation_id: convId,
+          sender_id: user.user_id,
+          content,
+          created_at: new Date().toISOString()
+        };
+        Store.addMessage(msg);
+        Store.addNotification({
+          notification_id: generateId(),
+          user_id: otherUserId,
+          message: `New message from ${user.full_name}`,
+          read: false,
+          created_at: new Date().toISOString()
+        });
+        openChat(convId, otherUserId);
+      }
+    }
+
+    const startUser = getQueryParam('user');
+    if (startUser) {
+      const conv = Store.getOrCreateConversation(user.user_id, startUser);
+      openChat(conv.conversation_id, startUser);
+    }
+
+    renderConversations();
+    document.getElementById('searchConv').addEventListener('input', debounce((e) => renderConversations(e.target.value), 200));
+  </script>
+</body>
+</html>

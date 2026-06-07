@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Profile — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section">
+    <div class="container container-md">
+      <div class="card card-body text-center mb-4" id="profileHeader"></div>
+      <div class="grid-2 mb-4" id="stats"></div>
+      <div class="card card-body mb-4">
+        <h3 class="mb-2">About</h3>
+        <p id="description" class="text-muted"></p>
+      </div>
+      <div class="card card-body mb-4">
+        <h3 class="mb-2">Reviews from Freelancers</h3>
+        <div id="reviews"></div>
+      </div>
+      <div class="text-center" id="actions"></div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+    const id = getQueryParam('id');
+    if (!id) { window.location.href = 'index.html'; throw ''; }
+
+    const user = Store.getUser(id);
+    const details = Store.getClientDetails(id);
+    if (!user || user.role !== 'client') { window.location.href = 'index.html'; throw ''; }
+
+    const currentUser = Auth.getCurrentUser();
+
+    document.getElementById('profileHeader').innerHTML = `
+      <img src="${user.profile_photo_url}" class="avatar avatar-lg" style="margin:0 auto 16px" alt="">
+      <h1>${details?.company_name || user.full_name}</h1>
+      <p class="text-muted">📍 ${user.location} · ${details?.industry || 'N/A'}</p>
+      ${renderStars(details?.average_rating || 0)} <small>(${details?.total_reviews || 0} reviews)</small>
+    `;
+
+    document.getElementById('stats').innerHTML = `
+      <div class="stat-card"><div class="stat-label">Jobs Posted</div><div class="stat-value">${details?.total_jobs_posted || 0}</div></div>
+      <div class="stat-card"><div class="stat-label">Freelancers Hired</div><div class="stat-value">${details?.freelancers_hired || 0}</div></div>
+    `;
+
+    document.getElementById('description').textContent = details?.company_description || 'No description provided.';
+
+    const reviews = Store.getReviews({ reviewee_id: id });
+    document.getElementById('reviews').innerHTML = reviews.length ? reviews.map(r => {
+      const reviewer = Store.getUser(r.reviewer_id);
+      return `<div class="mb-3"><strong>${reviewer?.full_name}</strong> ${renderStars(r.rating)}<p class="text-muted">${r.text || ''}</p></div>`;
+    }).join('') : '<p class="text-muted">No reviews yet</p>';
+
+    document.getElementById('actions').innerHTML = currentUser ? `
+      <a href="messages.html?user=${id}" class="btn btn-primary">Send Message</a>
+      <a href="browse-jobs.html?client=${id}" class="btn btn-outline">View Jobs</a>
+    ` : `<a href="login.html" class="btn btn-primary">Sign In to Contact</a>`;
+  </script>
+</body>
+</html>

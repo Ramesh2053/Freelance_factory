@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Experience — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:48px">
+    <div class="container container-sm">
+      <h1 class="text-center mb-2">Rate Your Experience</h1>
+      <p class="text-center text-muted mb-4" id="subtitle"></p>
+      <div id="alertArea"></div>
+      <form id="reviewForm" class="card card-body text-center">
+        <div class="star-rating mb-4" id="starRating">
+          <span data-value="1">★</span><span data-value="2">★</span><span data-value="3">★</span>
+          <span data-value="4">★</span><span data-value="5">★</span>
+        </div>
+        <div class="form-group text-left">
+          <label>Review (optional, max 300 characters)</label>
+          <textarea id="reviewText" class="form-control" maxlength="300" rows="4"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Submit Review</button>
+      </form>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const user = Auth.getCurrentUser();
+    const jobId = getQueryParam('job');
+    const job = Store.getJob(jobId);
+    if (!job) { window.location.href = 'index.html'; throw ''; }
+
+    let revieweeId, revieweeName;
+    if (user.role === 'client') {
+      revieweeId = job.hired_freelancer_id;
+      const fl = Store.getUser(revieweeId);
+      revieweeName = fl?.full_name;
+      document.getElementById('subtitle').textContent = `How was your experience with ${revieweeName}?`;
+    } else {
+      revieweeId = job.client_id;
+      const cl = Store.getUser(revieweeId);
+      revieweeName = cl?.full_name;
+      document.getElementById('subtitle').textContent = `How was your experience with ${revieweeName}?`;
+    }
+
+    let selectedRating = 0;
+    document.querySelectorAll('#starRating span').forEach(star => {
+      star.addEventListener('click', () => {
+        selectedRating = parseInt(star.dataset.value);
+        document.querySelectorAll('#starRating span').forEach((s, i) => {
+          s.classList.toggle('active', i < selectedRating);
+        });
+      });
+      star.addEventListener('mouseenter', () => {
+        const val = parseInt(star.dataset.value);
+        document.querySelectorAll('#starRating span').forEach((s, i) => s.style.color = i < val ? '#FBBF24' : '');
+      });
+    });
+
+    document.getElementById('reviewForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!selectedRating) { showAlert(document.getElementById('alertArea'), 'Please select a star rating.', 'error'); return; }
+
+      Store.addReview({
+        review_id: generateId(),
+        job_id: jobId,
+        reviewer_id: user.user_id,
+        reviewee_id: revieweeId,
+        rating: selectedRating,
+        text: document.getElementById('reviewText').value,
+        created_at: new Date().toISOString()
+      });
+
+      Store.addActivity({
+        activity_id: generateId(),
+        user_id: user.user_id,
+        type: 'review',
+        message: `Reviewed ${revieweeName}`,
+        created_at: new Date().toISOString()
+      });
+
+      showAlert(document.getElementById('alertArea'), '✓ Your review has been posted!', 'success');
+      document.getElementById('reviewForm').style.display = 'none';
+      setTimeout(() => {
+        window.location.href = user.role === 'client' ? 'dashboard-client.html' : 'dashboard-freelancer.html';
+      }, 2000);
+    });
+  </script>
+</body>
+</html>

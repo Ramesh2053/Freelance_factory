@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Details — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container">
+      <div id="alertArea"></div>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div id="jobContent"></div>
+          <div class="card card-body mt-3" id="applicantsSection" style="display:none">
+            <h3 class="mb-3">Applicants</h3>
+            <div id="applicants"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card card-body" id="clientCard"></div>
+          <div class="card card-body mt-3" id="actionCard"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+    const jobId = getQueryParam('id');
+    const job = Store.getJob(jobId);
+    if (!job) { window.location.href = 'browse-jobs.html'; throw ''; }
+
+    const currentUser = Auth.getCurrentUser();
+    const client = Store.getUser(job.client_id);
+    const cd = Store.getClientDetails(job.client_id);
+    const applicants = Store.getApplications({ job_id: jobId });
+    const statusInfo = STATUS_LABELS[job.status] || STATUS_LABELS.posted;
+
+    if (getQueryParam('posted')) {
+      showAlert(document.getElementById('alertArea'), '✓ Job posted successfully! Share it or wait for applications.', 'success');
+    }
+
+    document.getElementById('jobContent').innerHTML = `
+      <div class="card card-body">
+        <span class="tag">${job.category}</span>
+        <span class="badge ${statusInfo.class}">${statusInfo.label}</span>
+        <span class="tag tag-orange">${job.job_type}</span>
+        <h1 class="mt-2">${job.title}</h1>
+        <p class="budget mt-2">${formatCurrency(job.budget)} <small class="text-muted">(${job.budget_type})</small></p>
+        <p class="text-muted">Deadline: ${formatDate(job.deadline)} · Posted ${formatDate(job.created_at)}</p>
+        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border)">
+        <h3 class="mb-2">Description</h3>
+        <p class="text-muted" style="white-space:pre-wrap">${job.description}</p>
+        <h3 class="mb-2 mt-3">Required Skills</h3>
+        <div>${job.skills_required.map(s => `<span class="tag">${s}</span>`).join('')}</div>
+        ${job.attachments?.length ? `<h3 class="mb-2 mt-3">Attachments</h3><ul>${job.attachments.map(a => `<li><a href="${a.url}" download="${a.name}">${a.name}</a></li>`).join('')}</ul>` : ''}
+      </div>
+    `;
+
+    document.getElementById('clientCard').innerHTML = `
+      <h3 class="mb-3">Client</h3>
+      <div class="flex gap-2 mb-2">
+        <img src="${client.profile_photo_url}" class="avatar" alt="">
+        <div>
+          <strong>${client.full_name}</strong><br>
+          ${renderStars(cd?.average_rating || 0)} (${cd?.total_reviews || 0})<br>
+          <small class="text-muted">📍 ${client.location}</small><br>
+          <small class="text-muted">${cd?.total_jobs_posted || 0} jobs posted</small>
+        </div>
+      </div>
+      <a href="profile-client.html?id=${client.user_id}" class="btn btn-ghost btn-sm btn-block">View Client Profile</a>
+    `;
+
+    const actionCard = document.getElementById('actionCard');
+    if (currentUser?.role === 'freelancer') {
+      const hasApplied = applicants.some(a => a.freelancer_id === currentUser.user_id);
+      const hired = applicants.find(a => a.freelancer_id === currentUser.user_id && a.status === 'hired');
+      actionCard.innerHTML = `
+        <p class="text-muted mb-2">${applicants.length} applicant(s)</p>
+        ${hired ? `
+          <a href="work-submit.html?job=${jobId}" class="btn btn-primary btn-block mb-2">Submit Work</a>
+        ` : hasApplied ? `
+          <button class="btn btn-ghost btn-block" disabled>Application Submitted</button>
+        ` : job.status === 'posted' ? `
+          <a href="job-apply.html?id=${jobId}" class="btn btn-primary btn-block">Apply Now</a>
+        ` : '<p class="text-muted">This job is no longer accepting applications.</p>'}
+      `;
+    } else if (currentUser?.user_id === job.client_id) {
+      actionCard.innerHTML = `
+        <a href="job-post.html?edit=${jobId}" class="btn btn-outline btn-block mb-2" id="editBtn">Edit Job</a>
+        <button class="btn btn-ghost btn-block mb-2" id="deleteBtn">Delete Job</button>
+        <button class="btn btn-primary btn-block" id="viewApplicants">View Applicants (${applicants.length})</button>
+        ${job.status === 'in-progress' ? `<a href="work-approval.html?job=${jobId}" class="btn btn-success btn-block mt-2">Review Submitted Work</a>` : ''}
+        <button class="btn btn-ghost btn-block mt-2" id="disputeBtn">Raise a Dispute</button>
+      `;
+
+      document.getElementById('deleteBtn').addEventListener('click', () => {
+        if (confirm('Delete this job?')) { Store.deleteJob(jobId); window.location.href = 'dashboard-client.html'; }
+      });
+      document.getElementById('viewApplicants').addEventListener('click', () => {
+        document.getElementById('applicantsSection').style.display = 'block';
+        renderApplicants();
+      });
+      document.getElementById('disputeBtn').addEventListener('click', () => {
+        window.location.href = `dispute.html?job=${jobId}`;
+      });
+    } else {
+      actionCard.innerHTML = `<p class="text-muted">${applicants.length} applicants</p><a href="login.html" class="btn btn-primary btn-block">Sign In to Apply</a>`;
+    }
+
+    function renderApplicants() {
+      document.getElementById('applicants').innerHTML = applicants.length ? applicants.map(a => {
+        const fl = Store.getUser(a.freelancer_id);
+        const fd = Store.getFreelancerDetails(a.freelancer_id);
+        return `
+          <div class="applicant-card">
+            <img src="${fl.profile_photo_url}" class="avatar" alt="">
+            <div style="flex:1">
+              <h4>${fl.full_name}</h4>
+              <p class="text-muted">${fd?.headline}</p>
+              ${renderStars(fd?.average_rating || 0)}
+              ${a.cover_letter ? `<p class="mt-2" style="font-size:14px">${a.cover_letter}</p>` : ''}
+              <div class="applicant-actions">
+                <a href="profile-freelancer.html?id=${fl.user_id}" class="btn btn-sm btn-outline">View Profile</a>
+                <a href="messages.html?user=${fl.user_id}" class="btn btn-sm btn-ghost">Message</a>
+                ${a.status !== 'hired' ? `<button class="btn btn-sm btn-secondary" onclick="hireFreelancer('${a.application_id}','${fl.user_id}')">Hire</button>` : '<span class="badge badge-success">Hired</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('') : '<p class="text-muted">No applicants yet</p>';
+    }
+
+    window.hireFreelancer = (appId, freelancerId) => {
+      Store.updateApplication(appId, { status: 'hired' });
+      Store.updateJob(jobId, { status: 'in-progress', hired_freelancer_id: freelancerId });
+      const fl = Store.getUser(freelancerId);
+      Store.addNotification({ notification_id: generateId(), user_id: freelancerId, message: `You've been hired for "${job.title}"!`, read: false, created_at: new Date().toISOString() });
+      Store.addActivity({ activity_id: generateId(), user_id: currentUser.user_id, type: 'hire', message: `Hired ${fl.full_name} for ${job.title}`, created_at: new Date().toISOString() });
+      showAlert(document.getElementById('alertArea'), `Hired ${fl.full_name}! Proceed to payment.`, 'success');
+      setTimeout(() => { window.location.href = `payment.html?job=${jobId}&freelancer=${freelancerId}`; }, 1500);
+    };
+  </script>
+</body>
+</html>

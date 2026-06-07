@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Email — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1>Verify Your Email</h1>
+      <p class="subtitle">Enter the 6-digit code sent to your email</p>
+      <div id="alertArea"></div>
+      <div class="alert alert-info" id="otpDisplay"></div>
+      <form id="otpForm">
+        <div class="otp-inputs">
+          <input type="text" maxlength="1" class="otp-digit" data-index="0">
+          <input type="text" maxlength="1" class="otp-digit" data-index="1">
+          <input type="text" maxlength="1" class="otp-digit" data-index="2">
+          <input type="text" maxlength="1" class="otp-digit" data-index="3">
+          <input type="text" maxlength="1" class="otp-digit" data-index="4">
+          <input type="text" maxlength="1" class="otp-digit" data-index="5">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Verify & Continue</button>
+      </form>
+      <p class="auth-footer">Didn't receive code? <a href="#" id="resendLink">Resend OTP</a></p>
+    </div>
+  </div>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+    const displayOtp = sessionStorage.getItem('ff_display_otp');
+    if (displayOtp) {
+      document.getElementById('otpDisplay').innerHTML = `<strong>Demo OTP:</strong> ${displayOtp}`;
+    } else if (!sessionStorage.getItem('ff_pending_otp')) {
+      window.location.href = 'signup.html';
+    }
+
+    const digits = document.querySelectorAll('.otp-digit');
+    digits.forEach((input, i) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '');
+        if (input.value && i < 5) digits[i + 1].focus();
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && i > 0) digits[i - 1].focus();
+      });
+    });
+
+    document.getElementById('otpForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const code = Array.from(digits).map(d => d.value).join('');
+      if (code.length !== 6) { showAlert(document.getElementById('alertArea'), 'Please enter all 6 digits.', 'error'); return; }
+      const result = Auth.verifyOTP(code);
+      if (!result.success) { showAlert(document.getElementById('alertArea'), result.message, 'error'); return; }
+      sessionStorage.removeItem('ff_display_otp');
+      window.location.href = 'profile-setup.html';
+    });
+
+    document.getElementById('resendLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      const result = Auth.resendOTP();
+      if (result.success) {
+        sessionStorage.setItem('ff_display_otp', result.otp);
+        document.getElementById('otpDisplay').innerHTML = `<strong>Demo OTP:</strong> ${result.otp}`;
+        showAlert(document.getElementById('alertArea'), 'New code sent!', 'success');
+      }
+    });
+  </script>
+</body>
+</html>

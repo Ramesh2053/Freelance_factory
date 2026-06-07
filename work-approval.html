@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review Work — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container container-md">
+      <h1 class="mb-4">Review Submitted Work</h1>
+      <div id="alertArea"></div>
+      <div id="content"></div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    if (!Auth.requireRole('client')) throw '';
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const user = Auth.getCurrentUser();
+    const jobId = getQueryParam('job');
+    const job = Store.getJob(jobId);
+    if (!job || job.client_id !== user.user_id) { window.location.href = 'dashboard-client.html'; throw ''; }
+
+    const submissions = Store.getWorkSubmissions({ job_id: jobId });
+    const submission = submissions.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))[0];
+    const freelancer = Store.getUser(submission?.freelancer_id || job.hired_freelancer_id);
+
+    if (!submission) {
+      document.getElementById('content').innerHTML = '<div class="empty-state"><p>No work submitted yet.</p></div>';
+      throw '';
+    }
+
+    document.getElementById('content').innerHTML = `
+      <div class="card card-body mb-4">
+        <div class="flex gap-2 mb-3">
+          <img src="${freelancer.profile_photo_url}" class="avatar" alt="">
+          <div><strong>${freelancer.full_name}</strong><br><small>Submitted ${formatDateTime(submission.submitted_at)}</small></div>
+        </div>
+        ${submission.notes ? `<p class="text-muted mb-3">${submission.notes}</p>` : ''}
+        <h4 class="mb-2">Deliverables</h4>
+        <ul>${submission.files.map(f => `<li><a href="${f.url}" download="${f.name}">📎 ${f.name}</a></li>`).join('')}</ul>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-success btn-lg" id="approveBtn">Approve & Release Payment</button>
+        <button class="btn btn-ghost btn-lg" id="revisionBtn">Request Changes</button>
+      </div>
+    `;
+
+    document.getElementById('approveBtn').addEventListener('click', () => {
+      Store.updateWorkSubmission(submission.submission_id, { status: 'approved' });
+      Store.updateJob(jobId, { status: 'completed', work_submitted: false });
+
+      const payment = Store.getPayments({ job_id: jobId }).find(p => p.status === 'escrow');
+      if (payment) {
+        Store.updatePayment(payment.payment_id, { status: 'released', released_at: new Date().toISOString() });
+        const fd = Store.getFreelancerDetails(freelancer.user_id);
+        if (fd) Store.updateFreelancerDetails(freelancer.user_id, { total_earned: (fd.total_earned || 0) + payment.amount });
+        const cd = Store.getClientDetails(user.user_id);
+        if (cd) Store.updateClientDetails(user.user_id, { total_spent: (cd.total_spent || 0) + payment.amount, freelancers_hired: (cd.freelancers_hired || 0) + 1 });
+      }
+
+      Store.addNotification({
+        notification_id: generateId(),
+        user_id: freelancer.user_id,
+        message: `Payment released for "${job.title}"! Great work!`,
+        read: false,
+        created_at: new Date().toISOString()
+      });
+
+      Store.addActivity({
+        activity_id: generateId(),
+        user_id: freelancer.user_id,
+        type: 'payment_received',
+        message: `Received ${formatCurrency(payment?.amount || job.budget)} for "${job.title}"`,
+        created_at: new Date().toISOString()
+      });
+
+      showAlert(document.getElementById('alertArea'), '✓ Work approved and payment released!', 'success');
+      setTimeout(() => { window.location.href = `review.html?job=${jobId}&role=client`; }, 1500);
+    });
+
+    document.getElementById('revisionBtn').addEventListener('click', () => {
+      Store.updateWorkSubmission(submission.submission_id, { status: 'revision_requested' });
+      Store.addNotification({
+        notification_id: generateId(),
+        user_id: freelancer.user_id,
+        message: `Revision requested for "${job.title}". Please resubmit.`,
+        read: false,
+        created_at: new Date().toISOString()
+      });
+      showAlert(document.getElementById('alertArea'), 'Revision request sent. Opening messages...', 'info');
+      setTimeout(() => { window.location.href = `messages.html?user=${freelancer.user_id}`; }, 1500);
+    });
+  </script>
+</body>
+</html>

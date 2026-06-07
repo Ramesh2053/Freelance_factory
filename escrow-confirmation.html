@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Secured — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:48px">
+    <div class="container container-sm text-center">
+      <div style="font-size:64px;margin-bottom:16px">✅</div>
+      <h1 class="text-success mb-2">Payment Secured!</h1>
+      <p class="text-muted mb-4">Your payment is safely held. The freelancer has been notified and can now start work.</p>
+      <div class="card card-body text-left" id="details"></div>
+      <div class="flex gap-2 mt-4" style="justify-content:center;flex-wrap:wrap">
+        <a href="#" id="viewProject" class="btn btn-primary">View Project</a>
+        <a href="dashboard-client.html" class="btn btn-ghost">Return to Dashboard</a>
+      </div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const paymentId = getQueryParam('payment');
+    const payments = Store.getPayments({});
+    const payment = payments.find(p => p.payment_id === paymentId);
+    if (!payment) { window.location.href = 'dashboard-client.html'; throw ''; }
+
+    const job = Store.getJob(payment.job_id);
+    const freelancer = Store.getUser(payment.freelancer_id);
+
+    document.getElementById('details').innerHTML = `
+      <p><strong>Amount Paid:</strong> ${formatCurrency(payment.amount)}</p>
+      <p class="mt-2"><strong>Job:</strong> ${job.title}</p>
+      <p class="mt-2"><strong>Freelancer:</strong> ${freelancer.full_name}</p>
+      <p class="mt-2"><strong>Status:</strong> <span class="badge badge-warning">Payment in escrow — awaiting completion</span></p>
+      <p class="mt-2"><strong>Method:</strong> ${payment.method}</p>
+    `;
+    document.getElementById('viewProject').href = `job-details.html?id=${job.job_id}`;
+  </script>
+</body>
+</html>

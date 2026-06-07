@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Freelancers — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container">
+      <h1 class="mb-4">Find Talent</h1>
+      <div class="form-group mb-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search by name, skill, or keyword..." style="max-width:600px">
+      </div>
+      <div class="browse-layout">
+        <aside class="filter-panel">
+          <h3>Filters</h3>
+          <div class="filter-group">
+            <label>Skills</label>
+            <select id="filterSkills" class="form-control" multiple size="5"></select>
+          </div>
+          <div class="filter-group">
+            <label>Rate Range (NPR/hr): <span id="rateDisplay">0 - 200</span></label>
+            <input type="range" id="rateMin" min="0" max="200" value="0">
+            <input type="range" id="rateMax" min="0" max="200" value="200">
+          </div>
+          <div class="filter-group">
+            <label>Minimum Rating</label>
+            <select id="filterRating" class="form-control">
+              <option value="0">All</option>
+              <option value="3">3+ Stars</option>
+              <option value="4">4+ Stars</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Location</label>
+            <select id="filterLocation" class="form-control">
+              <option value="">All Locations</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Availability</label>
+            <select id="filterAvailability" class="form-control">
+              <option value="">All</option>
+              <option value="Available">Available</option>
+              <option value="Busy">Busy</option>
+              <option value="Not Available">Not Available</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-block" id="applyFilters">Apply Filters</button>
+        </aside>
+        <div>
+          <div class="grid-3" id="results"></div>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'), { activePage: 'browse-freelancers.html' });
+
+    document.getElementById('filterSkills').innerHTML = SKILLS_LIST.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    const locations = [...new Set(Store.getAllFreelancers().map(f => f.location).filter(Boolean))];
+    document.getElementById('filterLocation').innerHTML += locations.map(l => `<option value="${l}">${l}</option>`).join('');
+
+    let currentPage = 1;
+    let filtered = [];
+
+    function getFilters() {
+      return {
+        search: document.getElementById('searchInput').value.toLowerCase(),
+        skills: Array.from(document.getElementById('filterSkills').selectedOptions).map(o => o.value),
+        rateMin: parseInt(document.getElementById('rateMin').value),
+        rateMax: parseInt(document.getElementById('rateMax').value),
+        rating: parseFloat(document.getElementById('filterRating').value),
+        location: document.getElementById('filterLocation').value,
+        availability: document.getElementById('filterAvailability').value
+      };
+    }
+
+    function applyFilters() {
+      const f = getFilters();
+      filtered = Store.getAllFreelancers().filter(fl => {
+        if (!fl.details) return false;
+        const d = fl.details;
+        if (f.search && !fl.full_name.toLowerCase().includes(f.search) && !d.headline.toLowerCase().includes(f.search) && !d.skills.some(s => s.toLowerCase().includes(f.search))) return false;
+        if (f.skills.length && !f.skills.some(s => d.skills.includes(s))) return false;
+        if (d.hourly_rate < f.rateMin || d.hourly_rate > f.rateMax) return false;
+        if (f.rating && d.average_rating < f.rating) return false;
+        if (f.location && fl.location !== f.location) return false;
+        if (f.availability && d.availability_status !== f.availability) return false;
+        const settings = Store.getUserSettings(fl.user_id);
+        if (settings.profile_visibility === 'private' && (!Auth.getCurrentUser() || Auth.getCurrentUser().user_id !== fl.user_id)) return false;
+        return true;
+      });
+      currentPage = 1;
+      render();
+    }
+
+    function render() {
+      const { items, total } = paginate(filtered, currentPage, 9);
+      const el = document.getElementById('results');
+      if (!items.length) {
+        el.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><h3>No results found</h3><p>Try adjusting your filters</p></div>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+      el.innerHTML = items.map(f => {
+        const d = f.details;
+        return `
+          <div class="card freelancer-card">
+            <div class="card-body">
+              <div class="freelancer-card-header">
+                <img src="${f.profile_photo_url}" class="avatar" alt="">
+                <div>
+                  <h4>${f.full_name}</h4>
+                  <p class="text-muted" style="font-size:13px">${d.headline}</p>
+                  <small class="text-muted">📍 ${f.location}</small>
+                </div>
+              </div>
+              <div>${d.skills.slice(0, 3).map(s => `<span class="tag">${s}</span>`).join('')}</div>
+              <div>${renderStars(d.average_rating)} <small>(${d.total_reviews})</small></div>
+              <p><strong>From ${formatCurrency(d.hourly_rate)}/hr</strong></p>
+              <span class="badge ${AVAILABILITY_COLORS[d.availability_status]}">${d.availability_status}</span>
+              <div class="flex gap-2 mt-2">
+                <a href="profile-freelancer.html?id=${f.user_id}" class="btn btn-outline btn-sm" style="flex:1">View Profile</a>
+                <a href="job-post.html?hire=${f.user_id}" class="btn btn-secondary btn-sm" style="flex:1">Hire Now</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      renderPagination(document.getElementById('pagination'), currentPage, total, (p) => { currentPage = p; render(); });
+    }
+
+    document.getElementById('rateMin').addEventListener('input', () => {
+      document.getElementById('rateDisplay').textContent = `${document.getElementById('rateMin').value} - ${document.getElementById('rateMax').value}`;
+    });
+    document.getElementById('rateMax').addEventListener('input', () => {
+      document.getElementById('rateDisplay').textContent = `${document.getElementById('rateMin').value} - ${document.getElementById('rateMax').value}`;
+    });
+    document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
+    applyFilters();
+  </script>
+</body>
+</html>

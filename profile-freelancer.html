@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Freelancer Profile — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <div class="profile-banner"></div>
+      <div class="profile-header" id="profileHeader"></div>
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card card-body mb-3">
+            <h3 class="mb-2">About</h3>
+            <p id="bio" class="text-muted"></p>
+          </div>
+          <div class="card card-body mb-3">
+            <h3 class="mb-2">Skills</h3>
+            <div id="skills"></div>
+          </div>
+          <div class="card card-body mb-3">
+            <h3 class="mb-2">Portfolio</h3>
+            <div class="portfolio-grid" id="portfolio"></div>
+          </div>
+          <div class="card card-body" id="certSection">
+            <h3 class="mb-2">Certifications</h3>
+            <div id="certifications"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card card-body mb-3">
+            <h3 class="mb-2">Rating</h3>
+            <div id="ratingSection"></div>
+          </div>
+          <div class="card card-body">
+            <h3 class="mb-2">Reviews</h3>
+            <div id="reviews"></div>
+            <a href="#" id="allReviews" class="btn btn-ghost btn-sm mt-2">See All Reviews</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+    const id = getQueryParam('id');
+    if (!id) { window.location.href = 'browse-freelancers.html'; throw ''; }
+
+    const user = Store.getUser(id);
+    const details = Store.getFreelancerDetails(id);
+    if (!user || !details) { window.location.href = 'browse-freelancers.html'; throw ''; }
+
+    const currentUser = Auth.getCurrentUser();
+    const rateDisplay = details.rate_type === 'hourly'
+      ? `${formatCurrency(details.hourly_rate)}/hr`
+      : `${formatCurrency(details.project_rate)}/project`;
+
+    document.getElementById('profileHeader').innerHTML = `
+      <img src="${user.profile_photo_url}" class="avatar avatar-lg" alt="${user.full_name}">
+      <div>
+        <h1>${user.full_name}</h1>
+        <p class="text-muted">${details.headline}</p>
+        <p>📍 ${user.location} · 🕐 ${user.timezone}</p>
+        <p class="mt-1"><span class="badge ${AVAILABILITY_COLORS[details.availability_status]}">${details.availability_status}</span> · Responds ${details.response_time}</p>
+        <p class="mt-1 text-muted">Member since ${formatDate(user.created_at)}</p>
+      </div>
+      <div class="profile-actions">
+        ${currentUser && currentUser.user_id !== id ? `
+          <a href="messages.html?user=${id}" class="btn btn-primary">Send Message</a>
+          <a href="job-post.html?hire=${id}" class="btn btn-secondary">Hire Now</a>
+        ` : currentUser?.user_id === id ? `
+          <a href="settings.html" class="btn btn-outline">Edit Profile</a>
+        ` : `
+          <a href="login.html" class="btn btn-primary">Sign In to Contact</a>
+        `}
+      </div>
+      <div style="width:100%;margin-top:16px">
+        <p style="font-family:Poppins;font-size:24px;font-weight:700;color:var(--accent-green)">${rateDisplay}</p>
+      </div>
+    `;
+
+    document.getElementById('bio').textContent = user.bio || 'No bio provided.';
+    document.getElementById('skills').innerHTML = details.skills.map(s => `<span class="tag">${s}</span>`).join('');
+    document.getElementById('portfolio').innerHTML = (details.portfolio_links || []).map(p => `
+      <div class="portfolio-item">
+        <img src="${p.image || 'https://picsum.photos/400/300'}" alt="${p.title}">
+        <div class="info"><h4>${p.title}</h4>${p.url !== '#' ? `<a href="${p.url}" target="_blank">View Project</a>` : ''}</div>
+      </div>
+    `).join('') || '<p class="text-muted">No portfolio items</p>';
+
+    if (details.certifications?.length) {
+      document.getElementById('certifications').innerHTML = details.certifications.map(c => `<span class="tag tag-green">${c}</span>`).join('');
+    } else {
+      document.getElementById('certSection').style.display = 'none';
+    }
+
+    document.getElementById('ratingSection').innerHTML = `
+      <div style="font-size:32px">${renderStars(details.average_rating)}</div>
+      <p><strong>${details.average_rating?.toFixed(1) || '0.0'}</strong> average · ${details.total_reviews} reviews</p>
+    `;
+
+    const reviews = Store.getReviews({ reviewee_id: id }).slice(0, 3);
+    document.getElementById('reviews').innerHTML = reviews.length ? reviews.map(r => {
+      const reviewer = Store.getUser(r.reviewer_id);
+      return `
+        <div style="padding:16px 0;border-bottom:1px solid var(--border)">
+          <div class="flex gap-2 mb-1">
+            <img src="${reviewer?.profile_photo_url}" class="avatar avatar-sm" alt="">
+            <div><strong>${reviewer?.full_name}</strong><br>${renderStars(r.rating)}</div>
+          </div>
+          <p class="text-muted" style="font-size:14px">${r.text || 'No comment'}</p>
+          <small class="text-muted">${formatDate(r.created_at)}</small>
+        </div>
+      `;
+    }).join('') : '<p class="text-muted">No reviews yet</p>';
+  </script>
+</body>
+</html>

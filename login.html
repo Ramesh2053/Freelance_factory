@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1>Welcome Back</h1>
+      <p class="subtitle">Sign in to your FreelanceFactory account</p>
+      <div id="alertArea"></div>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="identifier">Email or Phone</label>
+          <input type="text" id="identifier" class="form-control" placeholder="you@email.com or 98XXXXXXXX" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" class="form-control" required>
+          <div class="flex-between mt-1">
+            <label class="form-check" style="margin:0"><input type="checkbox" id="remember"> Remember Me</label>
+            <a href="#" style="font-size:13px" id="forgotLink">Forgot Password?</a>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+      </form>
+      <p class="auth-footer">Don't have an account? <a href="signup.html">Sign Up</a></p>
+      <div class="alert alert-info mt-3" style="font-size:13px">
+        <strong>Demo:</strong> Use any seeded user email (e.g. sarah.chen@demo.com) with password <code>demo123</code>
+      </div>
+    </div>
+  </div>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+    if (Auth.isLoggedIn()) {
+      const u = Auth.getCurrentUser();
+      window.location.href = u.role === 'freelancer' ? 'dashboard-freelancer.html' : 'dashboard-client.html';
+    }
+    const remembered = localStorage.getItem('ff_remember');
+    if (remembered) document.getElementById('identifier').value = remembered;
+
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const result = Auth.login(
+        document.getElementById('identifier').value.trim(),
+        document.getElementById('password').value,
+        document.getElementById('remember').checked
+      );
+      if (!result.success) {
+        showAlert(document.getElementById('alertArea'), result.message, 'error');
+        return;
+      }
+      const redirect = getQueryParam('redirect');
+      if (redirect) { window.location.href = redirect; return; }
+      window.location.href = result.user.role === 'freelancer' ? 'dashboard-freelancer.html' : 'dashboard-client.html';
+    });
+
+    document.getElementById('forgotLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      showAlert(document.getElementById('alertArea'), 'Password reset link would be sent to your email. (Demo mode)', 'info');
+    });
+  </script>
+</body>
+</html>

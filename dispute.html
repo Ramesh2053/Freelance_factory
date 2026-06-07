@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raise Dispute — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container container-md">
+      <h1 class="mb-4">Raise a Dispute</h1>
+      <div id="alertArea"></div>
+      <div class="card card-body mb-4" id="jobInfo"></div>
+      <form id="disputeForm" class="card card-body">
+        <div class="form-group">
+          <label>Reason for Dispute</label>
+          <select id="reason" class="form-control" required>
+            <option value="">Select a reason</option>
+            <option value="Quality not met">Quality not met</option>
+            <option value="Non-payment">Non-payment</option>
+            <option value="Missed deadline">Missed deadline</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description (required)</label>
+          <textarea id="description" class="form-control" rows="5" required placeholder="Describe the issue in detail..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Evidence (file uploads)</label>
+          <input type="file" id="evidence" class="form-control" multiple>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Dispute</button>
+      </form>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const user = Auth.getCurrentUser();
+    const jobId = getQueryParam('job');
+    const job = Store.getJob(jobId);
+    if (!job) { window.location.href = 'index.html'; throw ''; }
+
+    document.getElementById('jobInfo').innerHTML = `
+      <h3>${job.title}</h3>
+      <p class="text-muted">Budget: ${formatCurrency(job.budget)} · Status: ${job.status}</p>
+      <p class="alert alert-warning mt-2" style="margin-bottom:0">Disputes can be raised within 7 days of job completion. Escrow payment will be frozen pending resolution.</p>
+    `;
+
+    document.getElementById('disputeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const evidence = [];
+      for (const f of document.getElementById('evidence').files) {
+        evidence.push({ name: f.name, url: await readFileAsDataURL(f) });
+      }
+
+      Store.addDispute({
+        dispute_id: generateId(),
+        job_id: jobId,
+        raised_by: user.user_id,
+        reason: document.getElementById('reason').value,
+        description: document.getElementById('description').value,
+        evidence,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      });
+
+      showAlert(document.getElementById('alertArea'), '✓ Dispute received. Admin will review and respond within 48 hours. Escrow payment is frozen.', 'success');
+      document.getElementById('disputeForm').style.display = 'none';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It Works — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+
+  <section class="hero" style="padding:60px 0 80px">
+    <div class="container hero-content">
+      <h1>How It Works</h1>
+      <p class="tagline">Simple steps for freelancers and clients alike</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>For Clients</h2>
+        <p>Hire talented freelancers in four easy steps</p>
+      </div>
+      <div class="steps" style="grid-template-columns:repeat(4,1fr)">
+        <div class="step-card card">
+          <div class="step-icon">1</div>
+          <h3>Create Account</h3>
+          <p>Sign up as a client and complete your company profile.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">2</div>
+          <h3>Post a Job</h3>
+          <p>Describe your project, set budget and deadline, publish.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">3</div>
+          <h3>Hire & Pay</h3>
+          <p>Review applicants, hire the best fit, pay via secure escrow.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">4</div>
+          <h3>Approve Work</h3>
+          <p>Review deliverables, approve, and release payment.</p>
+        </div>
+      </div>
+      <div class="text-center mt-4">
+        <a href="signup.html?role=client" class="btn btn-primary btn-lg">Start Hiring</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header">
+        <h2>For Freelancers</h2>
+        <p>Find work and get paid securely</p>
+      </div>
+      <div class="steps" style="grid-template-columns:repeat(4,1fr)">
+        <div class="step-card card">
+          <div class="step-icon">1</div>
+          <h3>Build Profile</h3>
+          <p>Showcase skills, portfolio, and rates to attract clients.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">2</div>
+          <h3>Browse Jobs</h3>
+          <p>Search and filter jobs that match your expertise.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">3</div>
+          <h3>Get Hired</h3>
+          <p>Apply with a cover letter, get selected by the client.</p>
+        </div>
+        <div class="step-card card">
+          <div class="step-icon">4</div>
+          <h3>Deliver & Earn</h3>
+          <p>Submit work, get approved, receive payment instantly.</p>
+        </div>
+      </div>
+      <div class="text-center mt-4">
+        <a href="signup.html?role=freelancer" class="btn btn-secondary btn-lg">Start Freelancing</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Payment Flow</h2>
+      </div>
+      <div class="card card-body container-md" style="margin:0 auto">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:center;text-align:center">
+          <div style="padding:16px"><strong>Client Pays</strong><br><small class="text-muted">Khalti / eSewa</small></div>
+          <span style="font-size:24px">→</span>
+          <div style="padding:16px"><strong>Funds in Escrow</strong><br><small class="text-muted">Protected</small></div>
+          <span style="font-size:24px">→</span>
+          <div style="padding:16px"><strong>Work Delivered</strong><br><small class="text-muted">Freelancer submits</small></div>
+          <span style="font-size:24px">→</span>
+          <div style="padding:16px"><strong>Client Approves</strong><br><small class="text-muted">Reviews work</small></div>
+          <span style="font-size:24px">→</span>
+          <div style="padding:16px"><strong>Payment Released</strong><br><small class="text-muted">Freelancer paid</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-header"><h2>Key Features</h2></div>
+      <div class="grid-3">
+        <div class="card card-body"><h4>💬 Messaging</h4><p class="text-muted mt-1">Real-time chat with file attachments between clients and freelancers.</p></div>
+        <div class="card card-body"><h4>📋 Applications</h4><p class="text-muted mt-1">Freelancers apply with cover letters; clients review and hire.</p></div>
+        <div class="card card-body"><h4>⚖️ Dispute Resolution</h4><p class="text-muted mt-1">Fair mediation within 48 hours if issues arise.</p></div>
+        <div class="card card-body"><h4>⭐ Reviews</h4><p class="text-muted mt-1">Two-way ratings build trust across the platform.</p></div>
+        <div class="card card-body"><h4>🔔 Notifications</h4><p class="text-muted mt-1">Stay updated on messages, payments, and job matches.</p></div>
+        <div class="card card-body"><h4>🔍 Smart Search</h4><p class="text-muted mt-1">Filter by skills, rate, rating, location, and availability.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>mountLayout(document.getElementById('header'), document.getElementById('footer'), { activePage: 'how-it-works.html' });</script>
+</body>
+</html>

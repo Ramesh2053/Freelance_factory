@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Setup — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container container-md">
+      <h1 class="mb-2">Complete Your Profile</h1>
+      <p class="text-muted mb-4">Tell us about yourself to get started</p>
+      <div id="alertArea"></div>
+      <div class="card card-body" id="profileForm"></div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    const user = Auth.getCurrentUser();
+    if (user.profile_complete) {
+      window.location.href = user.role === 'freelancer' ? 'dashboard-freelancer.html' : 'dashboard-client.html';
+    }
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const formEl = document.getElementById('profileForm');
+
+    if (user.role === 'freelancer') {
+      formEl.innerHTML = `
+        <form id="setupForm">
+          <div class="form-group text-center">
+            <img src="${user.profile_photo_url}" id="photoPreview" class="avatar avatar-lg" style="margin:0 auto 12px">
+            <input type="file" id="photo" accept="image/*" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Professional Headline</label>
+            <input type="text" id="headline" class="form-control" placeholder="Logo Designer | Brand Identity" required>
+          </div>
+          <div class="form-group">
+            <label>Bio / About (max 200 characters)</label>
+            <textarea id="bio" class="form-control" maxlength="200" required></textarea>
+            <span class="hint"><span id="bioCount">0</span>/200</span>
+          </div>
+          <div class="form-group">
+            <label>Skills (select multiple)</label>
+            <select id="skills" class="form-control" multiple size="6" required>
+              ${SKILLS_LIST.map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Rate Type</label>
+            <div class="form-check"><input type="radio" name="rateType" value="hourly" checked> Hourly Rate</div>
+            <div class="form-check"><input type="radio" name="rateType" value="project"> Project-based Rate</div>
+          </div>
+          <div class="form-group">
+            <label id="rateLabel">Hourly Rate (NPR)</label>
+            <input type="number" id="rate" class="form-control" min="100" required>
+          </div>
+          <div class="form-group">
+            <label>Portfolio (at least 1 link or image)</label>
+            <input type="url" id="portfolioUrl" class="form-control" placeholder="https://yourportfolio.com">
+            <input type="file" id="portfolioImg" accept="image/*" class="form-control mt-2">
+          </div>
+          <div class="form-group">
+            <label>Certifications (optional)</label>
+            <input type="text" id="certifications" class="form-control" placeholder="Comma-separated">
+          </div>
+          <div class="form-group">
+            <label>Languages</label>
+            <input type="text" id="languages" class="form-control" value="English, Nepali" required>
+          </div>
+          <div class="form-group">
+            <label>Availability</label>
+            <select id="availability" class="form-control">
+              <option value="Available">Available</option>
+              <option value="Busy">Busy</option>
+              <option value="Not Available">Not Available</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="location" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>Timezone</label>
+              <select id="timezone" class="form-control">
+                <option value="Asia/Kathmandu">Asia/Kathmandu (NPT)</option>
+                <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save & Go to Dashboard</button>
+        </form>
+      `;
+
+      document.getElementById('bio').addEventListener('input', (e) => {
+        document.getElementById('bioCount').textContent = e.target.value.length;
+      });
+      document.querySelectorAll('input[name="rateType"]').forEach(r => {
+        r.addEventListener('change', () => {
+          document.getElementById('rateLabel').textContent = r.value === 'hourly' ? 'Hourly Rate (NPR)' : 'Project Rate (NPR)';
+        });
+      });
+      document.getElementById('photo').addEventListener('change', async (e) => {
+        if (e.target.files[0]) {
+          document.getElementById('photoPreview').src = await readFileAsDataURL(e.target.files[0]);
+        }
+      });
+
+      document.getElementById('setupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const skills = Array.from(document.getElementById('skills').selectedOptions).map(o => o.value);
+        if (skills.length === 0) { showAlert(document.getElementById('alertArea'), 'Select at least one skill.', 'error'); return; }
+        const portfolioUrl = document.getElementById('portfolioUrl').value;
+        const portfolioImg = document.getElementById('portfolioImg').files[0];
+        if (!portfolioUrl && !portfolioImg) { showAlert(document.getElementById('alertArea'), 'Add at least one portfolio item.', 'error'); return; }
+
+        let photoUrl = user.profile_photo_url;
+        const photoFile = document.getElementById('photo').files[0];
+        if (photoFile) photoUrl = await readFileAsDataURL(photoFile);
+
+        const portfolio = [];
+        if (portfolioUrl) portfolio.push({ title: 'Portfolio', url: portfolioUrl, image: 'https://picsum.photos/seed/port/400/300' });
+        if (portfolioImg) portfolio.push({ title: 'Portfolio Image', url: '#', image: await readFileAsDataURL(portfolioImg) });
+
+        const rateType = document.querySelector('input[name="rateType"]:checked').value;
+        const rate = parseFloat(document.getElementById('rate').value);
+
+        Store.updateUser(user.user_id, {
+          profile_photo_url: photoUrl,
+          bio: document.getElementById('bio').value,
+          location: document.getElementById('location').value,
+          timezone: document.getElementById('timezone').value,
+          profile_complete: true
+        });
+
+        Store.addFreelancerDetails({
+          freelancer_id: user.user_id,
+          headline: document.getElementById('headline').value,
+          skills,
+          rate_type: rateType,
+          hourly_rate: rateType === 'hourly' ? rate : rate / 10,
+          project_rate: rateType === 'project' ? rate : rate * 10,
+          portfolio_links: portfolio,
+          certifications: document.getElementById('certifications').value.split(',').map(s => s.trim()).filter(Boolean),
+          languages: document.getElementById('languages').value.split(',').map(s => s.trim()),
+          availability_status: document.getElementById('availability').value,
+          average_rating: 0,
+          total_reviews: 0,
+          total_earned: 0,
+          response_time: '< 2 hours'
+        });
+
+        window.location.href = 'dashboard-freelancer.html';
+      });
+    } else {
+      formEl.innerHTML = `
+        <form id="setupForm">
+          <div class="form-group text-center">
+            <img src="${user.profile_photo_url}" id="photoPreview" class="avatar avatar-lg" style="margin:0 auto 12px">
+            <input type="file" id="photo" accept="image/*" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Company Name (if applicable)</label>
+            <input type="text" id="companyName" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Industry / Sector</label>
+            <select id="industry" class="form-control" required>
+              ${INDUSTRIES.map(i => `<option value="${i}">${i}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Company Description (optional)</label>
+            <textarea id="companyDesc" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" id="location" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Save & Go to Dashboard</button>
+        </form>
+      `;
+
+      document.getElementById('photo').addEventListener('change', async (e) => {
+        if (e.target.files[0]) document.getElementById('photoPreview').src = await readFileAsDataURL(e.target.files[0]);
+      });
+
+      document.getElementById('setupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        let photoUrl = user.profile_photo_url;
+        const photoFile = document.getElementById('photo').files[0];
+        if (photoFile) photoUrl = await readFileAsDataURL(photoFile);
+
+        Store.updateUser(user.user_id, {
+          profile_photo_url: photoUrl,
+          location: document.getElementById('location').value,
+          profile_complete: true
+        });
+
+        Store.addClientDetails({
+          client_id: user.user_id,
+          company_name: document.getElementById('companyName').value || user.full_name,
+          industry: document.getElementById('industry').value,
+          company_description: document.getElementById('companyDesc').value,
+          total_jobs_posted: 0,
+          total_spent: 0,
+          average_rating: 0,
+          total_reviews: 0,
+          freelancers_hired: 0
+        });
+
+        window.location.href = 'dashboard-client.html';
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Jobs — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container">
+      <h1 class="mb-4">Browse Jobs</h1>
+      <input type="text" id="searchInput" class="form-control mb-4" placeholder="Search by title, keyword, or category..." style="max-width:600px">
+      <div class="browse-layout">
+        <aside class="filter-panel">
+          <h3>Filters</h3>
+          <div class="filter-group">
+            <label>Category</label>
+            <select id="filterCategory" class="form-control">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Budget Range: <span id="budgetDisplay">0 - 5000</span></label>
+            <input type="range" id="budgetMin" min="0" max="5000" value="0" step="100">
+            <input type="range" id="budgetMax" min="0" max="5000" value="5000" step="100">
+          </div>
+          <div class="filter-group">
+            <label>Deadline</label>
+            <select id="filterDeadline" class="form-control">
+              <option value="">Anytime</option>
+              <option value="7">Next 7 days</option>
+              <option value="30">Next 30 days</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Job Type</label>
+            <select id="filterJobType" class="form-control">
+              <option value="">All</option>
+              <option value="one-time">One-time</option>
+              <option value="ongoing">Ongoing</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-block" id="applyFilters">Apply Filters</button>
+        </aside>
+        <div>
+          <div id="results"></div>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'), { activePage: 'browse-jobs.html' });
+    document.getElementById('filterCategory').innerHTML += JOB_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    let currentPage = 1;
+    let filtered = [];
+    const user = Auth.getCurrentUser();
+
+    function applyFilters() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const category = document.getElementById('filterCategory').value;
+      const budgetMin = parseInt(document.getElementById('budgetMin').value);
+      const budgetMax = parseInt(document.getElementById('budgetMax').value);
+      const deadline = document.getElementById('filterDeadline').value;
+      const jobType = document.getElementById('filterJobType').value;
+
+      filtered = Store.getJobs().filter(j => {
+        if (j.status !== 'posted' && j.status !== 'in-progress') return false;
+        if (j.visibility === 'invite-only') return false;
+        if (search && !j.title.toLowerCase().includes(search) && !j.description.toLowerCase().includes(search) && !j.category.toLowerCase().includes(search)) return false;
+        if (category && j.category !== category) return false;
+        if (j.budget < budgetMin || j.budget > budgetMax) return false;
+        if (jobType && j.job_type !== jobType) return false;
+        if (deadline) {
+          const days = (new Date(j.deadline) - Date.now()) / 86400000;
+          if (days < 0 || days > parseInt(deadline)) return false;
+        }
+        return true;
+      });
+      currentPage = 1;
+      render();
+    }
+
+    function render() {
+      const { items, total } = paginate(filtered, currentPage, 8);
+      const el = document.getElementById('results');
+      if (!items.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">💼</div><h3>No jobs found</h3><p>Try adjusting your filters</p></div>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+      el.innerHTML = items.map(j => {
+        const client = Store.getUser(j.client_id);
+        const cd = Store.getClientDetails(j.client_id);
+        const applicants = Store.getApplications({ job_id: j.job_id }).length;
+        return `
+          <div class="card job-card mb-3">
+            <div class="card-body flex-between" style="flex-wrap:wrap;gap:16px">
+              <div style="flex:1;min-width:250px">
+                <span class="tag">${j.category}</span>
+                <span class="tag tag-orange">${j.job_type}</span>
+                <h3 class="mt-2">${j.title}</h3>
+                <p class="text-muted">${truncate(j.description, 100)}</p>
+                <p class="text-muted" style="font-size:13px">by ${client?.full_name} ${cd ? renderStars(cd.average_rating) : ''} · ${applicants} applicants · ${formatDate(j.created_at)}</p>
+              </div>
+              <div style="text-align:right">
+                <p class="budget">${formatCurrency(j.budget)}</p>
+                <p class="text-muted" style="font-size:13px">Due ${formatDate(j.deadline)}</p>
+                <div class="flex gap-2 mt-2" style="justify-content:flex-end">
+                  <a href="job-details.html?id=${j.job_id}" class="btn btn-outline btn-sm">View Details</a>
+                  ${user?.role === 'freelancer' ? `<a href="job-apply.html?id=${j.job_id}" class="btn btn-primary btn-sm">Apply Now</a>` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      renderPagination(document.getElementById('pagination'), currentPage, total, (p) => { currentPage = p; render(); });
+    }
+
+    document.getElementById('budgetMin').addEventListener('input', () => {
+      document.getElementById('budgetDisplay').textContent = `${document.getElementById('budgetMin').value} - ${document.getElementById('budgetMax').value}`;
+    });
+    document.getElementById('budgetMax').addEventListener('input', () => {
+      document.getElementById('budgetDisplay').textContent = `${document.getElementById('budgetMin').value} - ${document.getElementById('budgetMax').value}`;
+    });
+    document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 300));
+    applyFilters();
+  </script>
+</body>
+</html>

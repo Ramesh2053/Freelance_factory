@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Work — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container container-md">
+      <h1 class="mb-4">Submit Your Work</h1>
+      <div id="alertArea"></div>
+      <div class="card card-body mb-4" id="jobInfo"></div>
+      <form id="submitForm" class="card card-body">
+        <h3 class="mb-3">Deliverables</h3>
+        <div class="form-group">
+          <label>Notes / Description (optional)</label>
+          <textarea id="notes" class="form-control" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Upload Deliverables</label>
+          <div class="file-upload" onclick="document.getElementById('files').click()">
+            <p>📁 Click to upload files</p>
+            <small class="text-muted">Multiple files allowed</small>
+          </div>
+          <input type="file" id="files" multiple style="display:none">
+          <ul class="file-list" id="fileList"></ul>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit for Review</button>
+      </form>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    if (!Auth.requireRole('freelancer')) throw '';
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const user = Auth.getCurrentUser();
+    const jobId = getQueryParam('job');
+    const job = Store.getJob(jobId);
+    if (!job) { window.location.href = 'dashboard-freelancer.html'; throw ''; }
+
+    document.getElementById('jobInfo').innerHTML = `
+      <h3>${job.title}</h3>
+      <p class="text-muted">Deadline: ${formatDate(job.deadline)}</p>
+    `;
+
+    let uploadedFiles = [];
+    document.getElementById('files').addEventListener('change', async (e) => {
+      for (const f of e.target.files) {
+        const url = await readFileAsDataURL(f);
+        uploadedFiles.push({ name: f.name, url });
+      }
+      document.getElementById('fileList').innerHTML = uploadedFiles.map((f, i) =>
+        `<li>${f.name} <button type="button" onclick="removeFile(${i})" style="background:none;border:none;cursor:pointer">✕</button></li>`
+      ).join('');
+    });
+
+    window.removeFile = (i) => {
+      uploadedFiles.splice(i, 1);
+      document.getElementById('fileList').innerHTML = uploadedFiles.map((f, idx) =>
+        `<li>${f.name} <button type="button" onclick="removeFile(${idx})" style="background:none;border:none;cursor:pointer">✕</button></li>`
+      ).join('');
+    };
+
+    document.getElementById('submitForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!uploadedFiles.length) { showAlert(document.getElementById('alertArea'), 'Upload at least one deliverable.', 'error'); return; }
+
+      Store.addWorkSubmission({
+        submission_id: generateId(),
+        job_id: jobId,
+        freelancer_id: user.user_id,
+        notes: document.getElementById('notes').value,
+        files: uploadedFiles,
+        status: 'pending_review',
+        submitted_at: new Date().toISOString()
+      });
+
+      Store.updateJob(jobId, { status: 'in-progress', work_submitted: true });
+
+      Store.addNotification({
+        notification_id: generateId(),
+        user_id: job.client_id,
+        message: `${user.full_name} submitted work for "${job.title}"`,
+        read: false,
+        created_at: new Date().toISOString()
+      });
+
+      Store.addActivity({
+        activity_id: generateId(),
+        user_id: user.user_id,
+        type: 'work_submitted',
+        message: `Submitted work for "${job.title}"`,
+        created_at: new Date().toISOString()
+      });
+
+      showAlert(document.getElementById('alertArea'), '✓ Work submitted! Client will review and approve shortly.', 'success');
+      document.getElementById('submitForm').style.display = 'none';
+    });
+  </script>
+</body>
+</html>

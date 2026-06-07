@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post a Job — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <section class="section" style="padding-top:32px">
+    <div class="container container-md">
+      <h1 class="mb-4">Post a Job</h1>
+      <div id="alertArea"></div>
+      <form id="jobForm" class="card card-body">
+        <h3 class="mb-3">Basic Info</h3>
+        <div class="form-group">
+          <label>Job Title</label>
+          <input type="text" id="title" class="form-control" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <select id="category" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Job Type</label>
+            <div class="form-check"><input type="radio" name="jobType" value="one-time" checked> One-time</div>
+            <div class="form-check"><input type="radio" name="jobType" value="ongoing"> Ongoing</div>
+          </div>
+        </div>
+
+        <h3 class="mb-3 mt-4">Details</h3>
+        <div class="form-group">
+          <label>Description (min 50 characters)</label>
+          <textarea id="description" class="form-control" rows="6" minlength="50" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Skills Required</label>
+          <select id="skills" class="form-control" multiple size="5" required></select>
+        </div>
+        <div class="form-group">
+          <label>Attachments</label>
+          <input type="file" id="attachments" class="form-control" multiple>
+        </div>
+
+        <h3 class="mb-3 mt-4">Budget & Timeline</h3>
+        <div class="form-group">
+          <label>Budget Type</label>
+          <div class="form-check"><input type="radio" name="budgetType" value="fixed" checked> Fixed Price</div>
+          <div class="form-check"><input type="radio" name="budgetType" value="hourly"> Hourly Rate</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Budget Amount (NPR)</label>
+            <input type="number" id="budget" class="form-control" min="100" required>
+          </div>
+          <div class="form-group">
+            <label>Deadline</label>
+            <input type="date" id="deadline" class="form-control" required>
+          </div>
+        </div>
+
+        <h3 class="mb-3 mt-4">Visibility</h3>
+        <div class="form-group">
+          <div class="form-check"><input type="radio" name="visibility" value="public" checked> Public (anyone can apply)</div>
+          <div class="form-check"><input type="radio" name="visibility" value="invite-only"> Invite Only</div>
+        </div>
+        <div class="form-group hidden" id="inviteSection">
+          <label>Select Freelancers</label>
+          <select id="invitedFreelancers" class="form-control" multiple size="4"></select>
+        </div>
+
+        <div class="flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary">Post Job</button>
+          <button type="button" class="btn btn-ghost" id="saveDraft">Save as Draft</button>
+        </div>
+      </form>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    if (!Auth.requireAuth()) throw '';
+    if (!Auth.requireRole('client')) throw '';
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+
+    const user = Auth.getCurrentUser();
+    document.getElementById('category').innerHTML = JOB_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+    document.getElementById('skills').innerHTML = SKILLS_LIST.map(s => `<option value="${s}">${s}</option>`).join('');
+    document.getElementById('invitedFreelancers').innerHTML = Store.getAllFreelancers().map(f => `<option value="${f.user_id}">${f.full_name}</option>`).join('');
+
+    const hireId = getQueryParam('hire');
+    if (hireId) {
+      document.querySelector('input[name="visibility"][value="invite-only"]').checked = true;
+      document.getElementById('inviteSection').classList.remove('hidden');
+      const select = document.getElementById('invitedFreelancers');
+      Array.from(select.options).forEach(o => { if (o.value === hireId) o.selected = true; });
+    }
+
+    document.querySelectorAll('input[name="visibility"]').forEach(r => {
+      r.addEventListener('change', () => {
+        document.getElementById('inviteSection').classList.toggle('hidden', r.value !== 'invite-only' || !r.checked);
+      });
+    });
+
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() + 1);
+    document.getElementById('deadline').min = minDate.toISOString().split('T')[0];
+
+    async function saveJob(isDraft) {
+      const skills = Array.from(document.getElementById('skills').selectedOptions).map(o => o.value);
+      if (!isDraft && skills.length === 0) { showAlert(document.getElementById('alertArea'), 'Select at least one skill.', 'error'); return; }
+
+      const attachments = [];
+      const files = document.getElementById('attachments').files;
+      for (const f of files) attachments.push({ name: f.name, url: await readFileAsDataURL(f) });
+
+      const visibility = document.querySelector('input[name="visibility"]:checked').value;
+      const invited = visibility === 'invite-only'
+        ? Array.from(document.getElementById('invitedFreelancers').selectedOptions).map(o => o.value)
+        : [];
+
+      const job = {
+        job_id: generateId(),
+        client_id: user.user_id,
+        title: document.getElementById('title').value,
+        category: document.getElementById('category').value,
+        description: document.getElementById('description').value,
+        skills_required: skills,
+        budget: parseFloat(document.getElementById('budget').value),
+        budget_type: document.querySelector('input[name="budgetType"]:checked').value,
+        job_type: document.querySelector('input[name="jobType"]:checked').value,
+        deadline: document.getElementById('deadline').value,
+        status: isDraft ? 'draft' : 'posted',
+        visibility,
+        invited_freelancers: invited,
+        attachments,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      Store.addJob(job);
+      const cd = Store.getClientDetails(user.user_id);
+      if (cd && !isDraft) Store.updateClientDetails(user.user_id, { total_jobs_posted: cd.total_jobs_posted + 1 });
+
+      Store.addActivity({ activity_id: generateId(), user_id: user.user_id, type: 'job_posted', message: `Posted job: ${job.title}`, created_at: new Date().toISOString() });
+
+      if (isDraft) {
+        showAlert(document.getElementById('alertArea'), 'Job saved as draft!', 'success');
+      } else {
+        sessionStorage.setItem('ff_job_posted', job.job_id);
+        window.location.href = `job-details.html?id=${job.job_id}&posted=1`;
+      }
+    }
+
+    document.getElementById('jobForm').addEventListener('submit', (e) => { e.preventDefault(); saveJob(false); });
+    document.getElementById('saveDraft').addEventListener('click', () => saveJob(true));
+  </script>
+</body>
+</html>

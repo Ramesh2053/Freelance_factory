@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up — FreelanceFactory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="header"></div>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1>Create Account</h1>
+      <p class="subtitle">Join FreelanceFactory today</p>
+      <div id="alertArea"></div>
+      <form id="signupForm">
+        <div class="role-toggle">
+          <label><input type="radio" name="role" value="freelancer" checked><span>I Want to Work</span></label>
+          <label><input type="radio" name="role" value="client"><span>I Need Work Done</span></label>
+        </div>
+        <div class="form-group">
+          <label for="fullName">Full Name</label>
+          <input type="text" id="fullName" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" class="form-control" placeholder="98XXXXXXXX" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" minlength="6" required>
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input type="password" id="confirmPassword" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-check">
+          <input type="checkbox" id="terms" required>
+          <label for="terms">I agree to the <a href="terms.html" target="_blank">Terms & Conditions</a> and <a href="privacy.html" target="_blank">Privacy Policy</a></label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+      </form>
+      <p class="auth-footer">Already have an account? <a href="login.html">Sign In</a></p>
+    </div>
+  </div>
+  <div id="footer"></div>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script>
+    mountLayout(document.getElementById('header'), document.getElementById('footer'));
+    const roleParam = getQueryParam('role');
+    if (roleParam) document.querySelector(`input[name="role"][value="${roleParam}"]`).checked = true;
+
+    document.getElementById('signupForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = {
+        fullName: document.getElementById('fullName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        password: document.getElementById('password').value,
+        confirmPassword: document.getElementById('confirmPassword').value,
+        role: document.querySelector('input[name="role"]:checked').value
+      };
+      if (!validateEmail(data.email)) { showAlert(document.getElementById('alertArea'), 'Please enter a valid email.', 'error'); return; }
+      if (!validatePhone(data.phone)) { showAlert(document.getElementById('alertArea'), 'Please enter a valid 10-digit phone number.', 'error'); return; }
+
+      const result = Auth.register(data);
+      if (!result.success) { showAlert(document.getElementById('alertArea'), result.message, 'error'); return; }
+      sessionStorage.setItem('ff_display_otp', result.otp);
+      window.location.href = 'verify-otp.html';
+    });
+  </script>
+</body>
+</html>
